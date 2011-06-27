@@ -1,0 +1,33 @@
+#
+# accelerometer driver configuration
+#
+menuconfig INPUT_ACCELEROMETER
+	bool "Accelerometer"
+	help
+	  Say Y here, and a list of supported ACCELEROMETERs will be displayed.
+	  This option doesn't affect the kernel.
+
+	 
+
+if INPUT_ACCELEROMETER
+
+config ACCELEROMETER_ADXL345
+	tristate "ADI ADXL345 accelerometer"	
+	select SERIO
+	help
+	  Say Y here if you have the ADXL345 accelerometer.
+
+	  
+config ACCELEROMETER_ST_L1S35DE
+	tristate "ST LIS35DE accelerometer"	
+	select SERIO
+	help
+	  Say Y here if you have the ST LIS35DE accelerometer.
+
+config ACCELEROMETER_MMA7455L
+        tristate "FREESCALE MMA7455L accelerometer"
+	select SERIO
+	help
+	  Say Y here if you have the FREESCALE MMA7455L accelerometer.
+endif
+	  
