@@ -3006,15 +3006,10 @@ int board_surport_fingers(bool * is_surport_fingers)
     {
          return -ENOMEM;
     }
-
-    if( machine_is_msm7x25_u8500())
-    {
+//----------------------------------------------
+//Return true for all devices
+//----------------------------------------------
          *is_surport_fingers = true;
-    }
-    else    
-    {
-        *is_surport_fingers = false;
-    }
 
     return result;
 }

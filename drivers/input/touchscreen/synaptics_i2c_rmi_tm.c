@@ -1,8 +1,11 @@
 /* drivers/input/touchscreen/synaptics_i2c_rmi_tm.c
  *
  * Copyright (C) 2009 HUAWEI.
- **
- */
+ *
+ * NOTICE by TJ Style 2011
+ *
+ * This is the multitouch patched driver for C8150 and U8150 devices
+ **/
 
 #include <linux/module.h>
 #include <linux/delay.h>
@@ -25,12 +28,13 @@
 #include <linux/vmalloc.h>
 
 
-/*
- * DEBUG SWITCH
- *
- */ 
-//#define TS_DEBUG 
-#undef TS_DEBUG 
+
+//----------------------------------------------
+//ENABLE DEBUGING
+//----------------------------------------------
+
+#define TS_DEBUG
+//#undef TS_DEBUG
 
 #ifdef TS_DEBUG
 #define SYNAPITICS_DEBUG(fmt, args...) printk(KERN_DEBUG fmt, ##args)
@@ -109,21 +113,10 @@ enum
 #define EXTRA_MAX_TOUCH_KEY    4
 #define TS_KEY_DEBOUNCE_TIMER_MS 60
 
-#ifdef CONFIG_SYNAPTICS_UPDATE_TS_FIRMWARE 
-static struct i2c_client *g_client = NULL;
-static ssize_t update_firmware_show(struct kobject *kobj, struct kobj_attribute *attr,char *buf);
-static ssize_t update_firmware_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count);
-
-static int ts_firmware_file(void);
-static int i2c_update_firmware(struct i2c_client *client); 
-
-static struct kobj_attribute update_firmware_attribute = {
-	.attr = {.name = "update_firmware", .mode = 0666},
-	.show = update_firmware_show,
-	.store = update_firmware_store,
-};
-#endif
-
+//----------------------------------------------
+//Removing firmware update function
+//to preventing from wrong update
+//----------------------------------------------
 
 /* to define a region of touch panel */
 typedef struct
@@ -632,8 +625,10 @@ static void synaptics_ts_work_func(struct work_struct *work)
 				}
 				ts->reported_finger_count = finger;
 				input_sync(ts->input_dev);
-				
-				goto ts_surport_fingers_end;
+//----------------------------------------------
+//Remove the jump
+//that causing Touchpanel not working
+//----------------------------------------------
 			}
             
 			if (z) 
@@ -709,7 +704,10 @@ static void synaptics_ts_work_func(struct work_struct *work)
 
 	}
 	
-ts_surport_fingers_end:
+//----------------------------------------------
+//Remove the jump
+//that causing Touchpanel not working
+//----------------------------------------------
 	if (ts->use_irq) {
 		enable_irq(ts->client->irq);
 		SYNAPITICS_DEBUG("enable irq\n");
@@ -812,17 +810,10 @@ succeed_find_device:
 			goto err_power_failed;
 		}
 	}
-
-#ifdef CONFIG_SYNAPTICS_UPDATE_TS_FIRMWARE     
-       g_client = client;  
-       for (i = 0 ; i < 3; i++) {
-            ret= ts_firmware_file();   
-            if (!ret)
-                break;
-       }
-#endif
-
-	
+//----------------------------------------------
+//Removing firmware update function
+//to preventing from wrong update
+//----------------------------------------------
 	ret = i2c_smbus_write_byte_data(ts->client, F01_RMI_CTRL01_00, 0); /* disable interrupt */
 	if(ret < 0){
 	    pr_err("%s: fail to disable interrupt!\n", __FUNCTION__);
@@ -1121,448 +1112,10 @@ static void synaptics_ts_late_resume(struct early_suspend *h)
 	synaptics_ts_resume(ts->client);
 }
 #endif
-
-
-#ifdef CONFIG_SYNAPTICS_UPDATE_TS_FIRMWARE 
-
-struct RMI4_FDT{
-  unsigned char m_QueryBase;
-  unsigned char m_CommandBase;
-  unsigned char m_ControlBase;
-  unsigned char m_DataBase;
-  unsigned char m_IntSourceCount;
-  unsigned char m_ID;
-};
-
-static int RMI4_read_PDT(struct i2c_client *client)
-{
-	// Read config data
-	struct RMI4_FDT temp_buf;
-	struct RMI4_FDT m_PdtF34Flash;
-	struct RMI4_FDT m_PdtF01Common;
-	struct i2c_msg msg[2];
-	unsigned short start_addr; 
-
-	memset(&m_PdtF34Flash,0,sizeof(struct RMI4_FDT));
-	memset(&m_PdtF01Common,0,sizeof(struct RMI4_FDT));
-
-	for(start_addr = 0xe9; start_addr > 10; start_addr -= sizeof(struct RMI4_FDT)){
-		msg[0].addr = client->addr;
-		msg[0].flags = 0;
-		msg[0].len = 1;
-		msg[0].buf = (unsigned char *)&start_addr;
-		msg[1].addr = client->addr;
-		msg[1].flags = I2C_M_RD;
-		msg[1].len = sizeof(struct RMI4_FDT);
-		msg[1].buf = (unsigned char *)&temp_buf;
-		if(i2c_transfer(client->adapter, msg, 2) < 0){
-			printk("%s:%d: read RIM4 PDT error!\n",__FUNCTION__,__LINE__);
-			return -1;
-		}
-
-		if(temp_buf.m_ID == 0x34){
-			memcpy(&m_PdtF34Flash,&temp_buf,sizeof(struct RMI4_FDT ));
-		}else if(temp_buf.m_ID == 0x01){
-			memcpy(&m_PdtF01Common,&temp_buf,sizeof(struct RMI4_FDT ));
-		}else if (temp_buf.m_ID == 0){		//end of PDT
-			break;
-		}
-	  }
-
-	if((m_PdtF01Common.m_CommandBase != F01_RMI_CMD00) || (m_PdtF34Flash.m_QueryBase != F34_RMI_QUERY0)){
-		printk("%s:%d: RIM4 PDT has changed!!!\n",__FUNCTION__,__LINE__);
-		return -1;
-	}
-
-	return 0;
-
-}
-
-//to be improved .......
-int RMI4_wait_attn(struct i2c_client * client,int udleay)
-{
-	int loop_count=0;
-	int ret=0;
-
-	do{
-		mdelay(udleay);
-		ret = i2c_smbus_read_byte_data(client,F34_RMI_DATA3);
-		// Clear the attention assertion by reading the interrupt status register
-		i2c_smbus_read_byte_data(client,F01_RMI_DATA0 + 1);
-	}while(loop_count++ < 0x10 && (ret != 0x80));
-
-	if(loop_count >= 0x10){
-		SYNAPITICS_DEBUG("RMI4 wait attn timeout:ret=0x%x\n",ret);
-		return -1;
-	}
-	return 0;
-}
-
-int RMI4_disable_program(struct i2c_client *client)
-{
-	unsigned char cdata; 
-	unsigned int loop_count=0;
-  
-	printk("RMI4 disable program...\n");
-	// Issue a reset command
-	i2c_smbus_write_byte_data(client,F01_RMI_CMD00,0x01);
-
-	// Wait for ATTN to be asserted to see if device is in idle state
-	RMI4_wait_attn(client,20);
-
-	// Read F01 Status flash prog, ensure the 6th bit is '0'
-	do{
-		cdata = i2c_smbus_read_byte_data(client,F01_RMI_DATA0);
-		udelay(2);
-	} while(((cdata & 0x40) != 0) && (loop_count++ < 10));
-
-	//Rescan the Page Description Table
-	return RMI4_read_PDT(client);
-}
-
-static int RMI4_enable_program(struct i2c_client *client)
-{
-	unsigned short bootloader_id = 0 ;
-	int ret = -1;
-	printk("RMI4 enable program...\n");
-	 // Read and write bootload ID
-	bootloader_id = i2c_smbus_read_word_data(client,F34_RMI_QUERY0);
-	i2c_smbus_write_word_data(client,F34_RMI_DATA2,bootloader_id);
-
-	  // Issue Enable flash command
-	if(i2c_smbus_write_byte_data(client, F34_RMI_DATA3, 0x0F) < 0){
-		SYNAPITICS_DEBUG("RMI enter flash mode error\n");
-		return -1;
-	}
-	ret = RMI4_wait_attn(client,12);
-
-	//Rescan the Page Description Table
-	RMI4_read_PDT(client);
-	return ret;
-}
-
-static unsigned long ExtractLongFromHeader(const unsigned char* SynaImage) 
-{
-  	return((unsigned long)SynaImage[0] +
-         (unsigned long)SynaImage[1]*0x100 +
-         (unsigned long)SynaImage[2]*0x10000 +
-         (unsigned long)SynaImage[3]*0x1000000);
-}
-
-static int RMI4_check_firmware(struct i2c_client *client,const unsigned char *pgm_data)
-{
-	unsigned long checkSumCode;
-	unsigned long m_firmwareImgSize;
-	unsigned long m_configImgSize;
-	unsigned short m_bootloadImgID; 
-	unsigned short bootloader_id;
-	const unsigned char *SynaFirmware;
-	unsigned char m_firmwareImgVersion;
-	unsigned short UI_block_count;
-	unsigned short CONF_block_count;
-	unsigned short fw_block_size;
-
-  	SynaFirmware = pgm_data;
-	checkSumCode = ExtractLongFromHeader(&(SynaFirmware[0]));
-	m_bootloadImgID = (unsigned int)SynaFirmware[4] + (unsigned int)SynaFirmware[5]*0x100;
-	m_firmwareImgVersion = SynaFirmware[7];
-	m_firmwareImgSize    = ExtractLongFromHeader(&(SynaFirmware[8]));
-	m_configImgSize      = ExtractLongFromHeader(&(SynaFirmware[12]));
- 
-	UI_block_count  = i2c_smbus_read_word_data(client,F34_RMI_QUERY5);
-	fw_block_size = i2c_smbus_read_word_data(client,F34_RMI_QUERY3);
-	CONF_block_count = i2c_smbus_read_word_data(client,F34_RMI_QUERY7);
-	bootloader_id = i2c_smbus_read_word_data(client,F34_RMI_QUERY0);
-
-	  return (m_firmwareImgVersion != 0 || bootloader_id == m_bootloadImgID) ? 0 : -1;
-
-}
-
-
-static int RMI4_write_image(struct i2c_client *client,unsigned char type_cmd,const unsigned char *pgm_data)
-{
-	unsigned short block_size;
-	unsigned short img_blocks;
-	unsigned short block_index;
-	const unsigned char * p_data;
-	int i;
-
-	block_size = i2c_smbus_read_word_data(client,F34_RMI_QUERY3);
-	switch(type_cmd ){
-		case 0x02:
-			img_blocks = i2c_smbus_read_word_data(client,F34_RMI_QUERY5);	//UI Firmware
-			break;
-		case 0x06:
-			img_blocks = i2c_smbus_read_word_data(client,F34_RMI_QUERY7);	//Configure	
-			break;
-		default:
-			SYNAPITICS_DEBUG("image type error\n");
-			goto error;
-	}
-
-	p_data = pgm_data;
-	for(block_index = 0; block_index < img_blocks; ++block_index){
-		printk("#");
-		// Write Block Number
-		if(i2c_smbus_write_word_data(client, F34_RMI_DATA0,block_index) < 0){
-			SYNAPITICS_DEBUG("write block number error\n");
-			goto error;
-		}
-
-		for(i=0;i<block_size;i++){
-			if(i2c_smbus_write_byte_data(client, F34_RMI_DATA2+i, *(p_data+i)) < 0){
-				SYNAPITICS_DEBUG("RMI4_write_image: block %d data 0x%x error\n",block_index,*p_data);
-				goto error;
-			}
-			udelay(15);
-		}
-		p_data += block_size;	
-
-		// Issue Write Firmware or configuration Block command
-		if(i2c_smbus_write_word_data(client, F34_RMI_DATA3, type_cmd) < 0){
-			SYNAPITICS_DEBUG("issue write command error\n");
-			goto error;
-		}
-
-		// Wait ATTN. Read Flash Command register and check error
-		if(RMI4_wait_attn(client,5) != 0)
-			goto error;
-	}
-
-	return 0;
-error:
-	return -1;
-}
-
-
-static int RMI4_program_configuration(struct i2c_client *client,const unsigned char *pgm_data )
-{
-	int ret;
-	unsigned short block_size;
-	unsigned short ui_blocks;
-
-	printk("\nRMI4 program Config firmware...\n");
-	block_size = i2c_smbus_read_word_data(client,F34_RMI_QUERY3);
-	ui_blocks = i2c_smbus_read_word_data(client,F34_RMI_QUERY5);	//UI Firmware
-
-	if(RMI4_write_image(client, 0x06,pgm_data+ui_blocks*block_size ) < 0){
-		SYNAPITICS_DEBUG("write configure image error\n");
-		return -1;
-	}
-	ret = i2c_smbus_read_byte_data(client,F34_RMI_DATA3);
-	return ((ret & 0xF0) == 0x80 ? 0 : ret);
-}
-
-static int RMI4_program_firmware(struct i2c_client *client,const unsigned char *pgm_data)
-{
-	int ret=0;
-	unsigned short bootloader_id;
-
-	printk("RMI4 program UI firmware...\n");
-
-	//read and write back bootloader ID
-	bootloader_id = i2c_smbus_read_word_data(client,F34_RMI_QUERY0);
-	i2c_smbus_write_word_data(client,F34_RMI_DATA2, bootloader_id );
-	//issue erase commander
-	if(i2c_smbus_write_byte_data(client, F34_RMI_DATA3, 0x03) < 0){
-		SYNAPITICS_DEBUG("RMI4_program_firmware error, erase firmware error \n");
-		return -1;
-	}
-	RMI4_wait_attn(client,300);
-
-	//check status
-	if((ret = i2c_smbus_read_byte_data(client,F34_RMI_DATA3)) != 0x80){
-		return -1;
-	}
-
-	//write firmware
-	if( RMI4_write_image(client,0x02,pgm_data) <0 ){
-		SYNAPITICS_DEBUG("write UI firmware error!\n");
-		return -1;
-	}
-
-	ret = i2c_smbus_read_byte_data(client,F34_RMI_DATA3);
-	return ((ret & 0xF0) == 0x80 ? 0 : ret);
-}
-
-static int synaptics_download(struct i2c_client *client,const unsigned char *pgm_data)
-{
-	int ret;
-
-	ret = RMI4_read_PDT(client);
-	if(ret != 0){
-		printk("RMI page func check error\n");
-		return -1;
-	}
-
-	ret = RMI4_enable_program(client);
-	if( ret != 0){
-		printk("%s:%d:RMI enable program error,return...\n",__FUNCTION__,__LINE__);
-		goto error;
-	}
-
-	ret = RMI4_check_firmware(client,pgm_data);
-	if( ret != 0){
-		printk("%s:%d:RMI check firmware error,return...\n",__FUNCTION__,__LINE__);
-		goto error;
-	}
-
-	ret = RMI4_program_firmware(client, pgm_data + 0x100);
-	if( ret != 0){
-		printk("%s:%d:RMI program firmware error,return...",__FUNCTION__,__LINE__);
-		goto error;
-	}
-
-	RMI4_program_configuration(client, pgm_data +  0x100);
-	return RMI4_disable_program(client);
-
-error:
-	RMI4_disable_program(client);
-	printk("%s:%d:error,return ....",__FUNCTION__,__LINE__);
-	return -1;
-
-}
-
-static int i2c_update_firmware(struct i2c_client *client) 
-{
-	char *buf;
-	struct file	*filp;
-    struct inode *inode = NULL;
-	mm_segment_t oldfs;
-    uint16_t	length;
-	int ret = 0;
-	const char filename[]="/sdcard/update/synaptics.img";
-
-	/* open file */
-    oldfs = get_fs();
-    set_fs(KERNEL_DS);
-    filp = filp_open(filename, O_RDONLY, S_IRUSR);
-    if (IS_ERR(filp)) {
-        printk("%s: file %s filp_open error\n", __FUNCTION__,filename);
-        set_fs(oldfs);
-        return -1;
-    }
-
-    if (!filp->f_op) {
-        printk("%s: File Operation Method Error\n", __FUNCTION__);
-        filp_close(filp, NULL);
-        set_fs(oldfs);
-        return -1;
-    }
-
-    inode = filp->f_path.dentry->d_inode;
-    if (!inode) {
-        printk("%s: Get inode from filp failed\n", __FUNCTION__);
-        filp_close(filp, NULL);
-        set_fs(oldfs);
-        return -1;
-    }
-
-    /* file's size */
-    length = i_size_read(inode->i_mapping->host);
-	if (!( length > 0 && length < 62*1024 )){
-		printk("file size error\n");
-		filp_close(filp, NULL);
-        set_fs(oldfs);
-		return -1;
-	}
-
-	/* allocation buff size */
-	buf = vmalloc(length+(length%2));		/* buf size if even */
-	if (!buf) {
-		printk("alloctation memory failed\n");
-		filp_close(filp, NULL);
-        set_fs(oldfs);
-		return -1;
-	}
-
-    /* read data */
-    if (filp->f_op->read(filp, buf, length, &filp->f_pos) != length) {
-        printk("%s: file read error\n", __FUNCTION__);
-        filp_close(filp, NULL);
-        set_fs(oldfs);
-		vfree(buf);
-        return -1;
-    }
-
-	ret = synaptics_download(client,buf);
-
- 	filp_close(filp, NULL);
-    set_fs(oldfs);
-	vfree(buf);
-	return ret;
-}
-
-static int ts_firmware_file(void)
-{
-	int ret;
-	struct kobject *kobject_ts;
-	kobject_ts = kobject_create_and_add("touch_screen", NULL);
-	if (!kobject_ts) {
-		printk("create kobjetct error!\n");
-		return -1;
-	}
-	ret = sysfs_create_file(kobject_ts, &update_firmware_attribute.attr);
-	if (ret) {
-		kobject_put(kobject_ts);
-		printk("create file error\n");
-		return -1;
-	}
-	return 0;	
-}
-
-
-/*
- * The "update_firmware" file where a static variable is read from and written to.
- */
-static ssize_t update_firmware_show(struct kobject *kobj, struct kobj_attribute *attr,char *buf)
-{
-	return 1;
-}
-
-
-static ssize_t update_firmware_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count)
-{
-	int i;
-	int ret = -1;
-
-	printk("#################update_firmware_store######################\n");
-
-	if ( (buf[0] == '2')&&(buf[1] == '\0') ) {
-
-		/* driver detect its device  */
-		for (i = 0; i < 3; i++) {	
-			ret = i2c_smbus_read_byte_data(g_client, F01_RMI_QUERY00);
-			if (ret == Manufacturer_ID){
-				goto firmware_find_device;
-			}
-
-		}
-		printk("Do not find synaptics device\n");	
-		return -1;
-
-firmware_find_device:
-
-		disable_irq(g_client->irq);
-		/*update firmware*/
-		ret = i2c_update_firmware(g_client);
-		enable_irq(g_client->irq);
- 
-		if( 0 != ret ){
-			printk("Update firmware failed!\n");
-			ret = -1;
-		} else {
-			printk("Update firmware success!\n");
-			arm_pm_restart(0,&ret);
-			ret = 1;
-		}
-	}
-	
-	return ret;
- }
-
-#endif
-
+//----------------------------------------------
+//Removing firmware update function
+//to preventing from wrong update
+//----------------------------------------------
 static const struct i2c_device_id synaptics_ts_id[] = {
 	{ "synaptics-tm", 0 },
 	{ }
