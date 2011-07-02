@@ -23,5 +23,4 @@ function mkbootimg {
 }
 
 setenv
-make -j${CPUS}
-mkbootimg
+make -j${CPUS} && mkbootimg
