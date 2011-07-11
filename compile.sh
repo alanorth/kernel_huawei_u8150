@@ -5,7 +5,7 @@ DATE=`date +%Y%m%d`
 function setenv {
 	echo -n "Setting ARM environment..."
 	export ARCH=arm
-	export CROSS_COMPILE=~/src/android-ndk-r5b/toolchains/arm-eabi-4.4.0/prebuilt/linux-x86/bin/arm-eabi-
+	export CROSS_COMPILE=~/src/android-ndk-r5b/toolchains/arm-linux-androideabi-4.4.3/prebuilt/linux-x86/bin/arm-linux-androideabi-
 	echo " done."
 
 	echo -n "Setting other environment variables..."
@@ -23,5 +23,4 @@ function mkbootimg {
 }
 
 setenv
-make -j${CPUS}
-mkbootimg
+make -j${CPUS} && mkbootimg
