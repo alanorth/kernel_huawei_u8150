@@ -5,7 +5,7 @@ DATE=`date +%Y%m%d`
 function setenv {
 	echo -n "Setting ARM environment..."
 	export ARCH=arm
-	export CROSS_COMPILE=~/src/android-toolchain-eabi-4.6-2011.07/bin/arm-eabi-
+	export CROSS_COMPILE=~/src/android-toolchain-eabi-linaro-4.6-2011.07/bin/arm-eabi-
 	echo " done."
 
 	echo -n "Setting other environment variables..."
