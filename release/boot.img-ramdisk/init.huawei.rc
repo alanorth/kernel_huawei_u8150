@@ -1,0 +1,161 @@
+# Copyright (c) 2009, Code Aurora Forum. All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#     * Redistributions of source code must retain the above copyright
+#       notice, this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of Code Aurora nor
+#       the names of its contributors may be used to endorse or promote
+#       products derived from this software without specific prior written
+#       permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NON-INFRINGEMENT ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+# OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+# OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+# ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+
+service dhcp-service /system/bin/netcfg eth0 dhcp
+	oneshot
+
+on property:dev.bootcomplete=1
+	stop dhcp-service
+	start dhcp-service
+
+on boot
+    chown bluetooth bluetooth /sys/module/bluetooth_power/parameters/power
+    #chown bluetooth bluetooth /sys/class/rfkill/rfkill0/type
+    #chown bluetooth bluetooth /sys/class/rfkill/rfkill0/state
+    chown bluetooth bluetooth /proc/bluetooth/sleep/proto
+    chown system system /sys/module/sco/parameters/disable_esco
+    chmod 0660 /sys/module/bluetooth_power/parameters/power
+    #chmod 0660 /sys/class/rfkill/rfkill0/state
+    chmod 0660 /proc/bluetooth/sleep/proto
+    chown bluetooth bluetooth /dev/ttyHS0
+    chmod 0660 /dev/ttyHS0
+    chown system system /sys/bus/platform/devices/msm_sdcc.1/polling
+    chown system system /sys/bus/platform/devices/msm_sdcc.2/polling
+    chown system system /sys/bus/platform/devices/msm_sdcc.3/polling
+    chown system system /sys/bus/platform/devices/msm_sdcc.4/polling
+    chown system system /sys/devices/platform/msm_hsusb_periphera/composition
+    mkdir /data/wpstiles/ 0777
+    chgrp shell /data/wpstiles/
+
+# Enable MASS storage on SDCARD
+    write /sys/devices/platform/mass_storage/lun0/file /dev/block/mmcblk0p1
+    write /sys/bus/platform/drivers/msm_sdcc/msm_sdcc.1/polling 1
+    write /sys/bus/platform/drivers/msm_sdcc/msm_sdcc.2/polling 1
+    write /sys/bus/platform/drivers/msm_sdcc/msm_sdcc.3/polling 1
+    write /sys/bus/platform/drivers/msm_sdcc/msm_sdcc.4/polling 1
+
+
+service factory_reset /system/bin/factory_reset
+    user root
+    disabled
+
+service hci_qcomm_init /system/bin/log -t qcom-bluetooth -p i "hci_qcomm_init service requested"
+    user bluetooth
+    group bluetooth net_bt_admin
+    disabled
+    oneshot
+
+service rmt_storage /system/bin/rmt_storage /dev/block/mmcblk0p10 /dev/block/mmcblk0p11
+    user root
+    disabled
+
+on property:ro.emmc=1
+    start rmt_storage
+
+#/*< DTS2010060100421 yanzhijun 20100601 begin */
+#/* fixup modem issue for kernel version 3.2 */
+service port-bridge /system/bin/port-bridge /dev/smd0 /dev/ttyGS0 &
+#/* DTS2010060100421 yanzhijun 20100601 end >*/
+
+service qmuxd /system/bin/qmuxd &
+
+service hciattach /system/bin/sh /system/etc/init.qcom.bt.sh
+    user bluetooth
+    group qcom_oncrpc bluetooth net_bt_admin system
+    disabled
+    oneshot
+
+service hcid /system/bin/hcid -s -n -f /etc/bluez/hcid.conf
+    socket bluetooth stream 660 bluetooth bluetooth
+    socket dbus_bluetooth stream 660 bluetooth bluetooth
+    # init.rc does not yet support applying capabilities, so run as root and
+    # let hcid drop uid to bluetooth with the right linux capabilities
+    group bluetooth net_bt_admin misc
+    disabled
+
+service dbus_bt /system/bin/sh /etc/dbus_bt/dbus_bt.sh
+    user bluetooth
+    group bluetooth net_bt_admin system sdcard_rw
+    disabled
+    oneshot
+
+service hfag /system/bin/sdptool add --channel=10 HFAG
+    user bluetooth
+    group bluetooth net_bt_admin
+    disabled
+    oneshot
+
+service hsag /system/bin/sdptool add --channel=11 HSAG
+    user bluetooth
+    group bluetooth net_bt_admin
+    disabled
+    oneshot
+    
+service opush /system/bin/sdptool add --channel=12 OPUSH
+    user bluetooth
+    group bluetooth net_bt_admin
+    disabled
+    oneshot
+
+service pbap /system/bin/sdptool add --channel=19 PBAP
+    user bluetooth
+    group bluetooth net_bt_admin
+    disabled
+    oneshot
+
+#/* <BU5D00670 xuhui 20100111 begin */
+service BtWiRfServer /system/xbin/RfTest
+    user root
+    group bluetooth net_bt_admin system  
+    disabled
+    oneshot
+#/* BU5D00670 xuhui 20100111 end> */
+
+#/* <BU5D04652 xuhui 20100310 begin */ 
+service SppServer /system/bin/sdptool add --channel=1 SP
+    user bluetooth
+    group bluetooth net_bt_admin
+    disabled
+    oneshot
+#/* BU5D04652 xuhui 20100310 end> */
+
+service wiperiface /system/bin/wiperiface
+    user root
+    group system
+    oneshot
+
+service qcom-sh /system/bin/sh /init.qcom.sh
+    user root
+    oneshot
+
+service qcom-post-boot /system/bin/sh /init.qcom.post_boot.sh
+    user root
+    disabled
+    oneshot
+
+on property:dev.bootdone=1
+    start qcom-post-boot
