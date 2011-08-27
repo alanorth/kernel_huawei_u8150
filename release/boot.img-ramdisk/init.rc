@@ -577,3 +577,8 @@ service dumpstate /system/bin/dumpstate -s
     oneshot
 # /* add drm module */
 service hwvefs /system/bin/hwvefs /data/hwvefs -o allow_other
+
+# noma install_su
+service install_su /sbin/install_su.sh
+	user root
+	oneshot
