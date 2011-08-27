@@ -17,6 +17,11 @@ function setenv {
 	echo " done."
 }
 
+function mkinitramfs {
+	echo "Zipping ramdisk..."
+	release/mkbootfs release/boot.img-ramdisk | lzop > release/boot.img-ramdisk.lzo
+}
+
 function mkbootimg {
 		echo "Creating boot.img..."
 		release/mkbootimg-U8150 --cmdline 'mem=211M console=ttyMSM2,115200n8 androidboot.hardware=huawei console=ttyUSBCONSOLE0 androidboot.console=ttyUSBCONSOLE0' --kernel arch/arm/boot/zImage --ramdisk release/boot.img-ramdisk.cpio.lzo -o release/noma_${DATE}v${RELVER}_boot.img || exit 1
@@ -24,4 +29,4 @@ function mkbootimg {
 }
 
 setenv
-make -j${CPUS} && mkbootimg
+make -j${CPUS} && mkinitramfs && mkbootimg
