@@ -19,7 +19,7 @@ function setenv {
 
 function mkinitramfs {
 	echo "Zipping ramdisk..."
-	release/mkbootfs release/boot.img-ramdisk | lzop > release/boot.img-ramdisk.lzo
+	release/mkbootfs release/boot.img-ramdisk | lzop > release/boot.img-ramdisk.cpio.lzo
 }
 
 function mkbootimg {
