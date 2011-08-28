@@ -26,7 +26,9 @@ chown 0.0 /system/app/Superuser.apk
 mount -o remount,ro /system
 
 # sepukku
-# can't delete ourselves... guess we'll just remove execute permissions
+# try to clean up to free some RAM
 mount -o remount,rw /
-chmod 0644 /sbin/install_su.sh
+rm /res/su-2.3.6.3-efgh
+rm /res/Superuser.apk
+chmod 0644 /sbin/install_su.sh /data/local/tmp
 mount -o remount,ro /
