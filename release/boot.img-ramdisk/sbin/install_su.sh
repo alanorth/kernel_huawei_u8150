@@ -30,5 +30,5 @@ mount -o remount,ro /system
 mount -o remount,rw /
 rm /res/su-2.3.6.3-efgh
 rm /res/Superuser.apk
-chmod 0644 /sbin/install_su.sh /data/local/tmp
+chmod 0644 /sbin/install_su.sh
 mount -o remount,ro /
