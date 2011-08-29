@@ -29,13 +29,13 @@
 target=`getprop ro.product.device`
 
 # /*<BU5D03701, JIALIN, 20100301, begin*/
-echo "ondemand" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+echo "smartassV2" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
 # /* < DTS2010080902195 wanghao 20100809 begin */
 echo 90 > /sys/devices/system/cpu/cpu0/cpufreq/ondemand/powersave_bias
 echo 80 > /sys/devices/system/cpu/cpu0/cpufreq/ondemand/up_threshold
 # echo 30 > /sys/devices/system/cpu/cpu0/cpufreq/ondemand/down_differential
 # /* DTS2010080902195 wanghao 20100809 end > */
-echo 245760 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+echo 122880 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
 # /*BU5D03701, JIALIN, 20100301, end>*/
 case "$target" in
     "qsd8250_surf" | "qsd8250_ffa")
