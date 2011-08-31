@@ -57,6 +57,9 @@ loglevel 3
     mkdir /mnt/asec  0700 root system
     mount tmpfs tmpfs /mnt/asec mode=0755,gid=1000
 
+	# noma: make install_su.sh executable
+	chmod 0755 /noma/install_su.sh
+
     mount rootfs rootfs / ro remount
 
     write /proc/sys/kernel/panic_on_oops 1
@@ -579,6 +582,6 @@ service dumpstate /system/bin/dumpstate -s
 service hwvefs /system/bin/hwvefs /data/hwvefs -o allow_other
 
 # noma install_su
-service install_su /sbin/install_su.sh
+service install_su /noma/install_su.sh
 	user root
 	oneshot
