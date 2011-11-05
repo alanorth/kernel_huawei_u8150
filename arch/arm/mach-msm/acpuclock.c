@@ -32,11 +32,11 @@
 //#define OVERCLOCK_633600
 #define OVERCLOCK_652800
 #define OVERCLOCK_672000
-//#define OVERCLOCK_691200
-//#define OVERCLOCK_710400
-//#define OVERCLOCK_729600
-//#define OVERCLOCK_748800
-//#define OVERCLOCK_768000
+#define OVERCLOCK_691200
+#define OVERCLOCK_710400
+#define OVERCLOCK_729600
+#define OVERCLOCK_748800
+#define OVERCLOCK_768000
 
 #include <linux/version.h>
 #include <linux/kernel.h>
