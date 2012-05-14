@@ -19,7 +19,7 @@ chmod 0755 /sbin/busybox
 rm -f /system/bin/su
 rm -f /system/xbin/su
 # now copy su and make sure it's setuid root (see: http://en.wikipedia.org/wiki/Setuid)
-cp /noma/res/su-2.3.6.3-efgh /system/bin/su
+cp /noma/res/su /system/bin/su
 chown 0.0 /system/bin/su
 chmod 06755 /system/bin/su
 
@@ -34,7 +34,7 @@ chmod 0644 /system/app/Superuser.apk
 chown 0.0 /system/app/Superuser.apk
 
 # try to clean up to free some RAM
-rm /noma/res/su-2.3.6.3-efgh
+rm /noma/res/su
 rm /noma/res/Superuser.apk
 
 # back to read only
